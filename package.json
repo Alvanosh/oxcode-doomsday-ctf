@@ -1,0 +1,13 @@
+{
+  "name": "oxcode-doomsday-ctf",
+  "version": "1.0.0",
+  "private": true,
+  "description": "OxCode Doomsday web CTF challenge",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "4.21.2"
+  }
+}
