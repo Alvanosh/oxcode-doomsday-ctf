@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OXCODE // DOOMSDAY</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;background:#030303}
+body{font-family:"Share Tech Mono",monospace;color:#fff}
+
+#world{
+  position:fixed;inset:0;
+  background:
+    linear-gradient(rgba(0,0,0,.28),rgba(0,0,0,.52)),
+    url("/doom-bg.png") center/cover no-repeat;
+  transform:scale(1.04);
+}
+#world:before{
+  content:"";position:absolute;inset:0;
+  background:radial-gradient(circle,transparent 15%,rgba(0,0,0,.2) 45%,rgba(0,0,0,.9));
+}
+#world:after{
+  content:"";position:absolute;inset:-20%;
+  background:radial-gradient(ellipse at 50% 45%,rgba(255,0,0,.14),transparent 42%);
+  animation:pulse 6s ease-in-out infinite alternate;
+}
+@keyframes pulse{from{opacity:.3}to{opacity:.9}}
+
+.scan,.noise{position:fixed;inset:0;pointer-events:none;z-index:20}
+.scan{background:repeating-linear-gradient(to bottom,rgba(255,255,255,.025) 0 1px,transparent 1px 4px)}
+.noise{inset:-50%;opacity:.035;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='.8' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' filter-opacity='.8'/%3E%3C/svg%3E");animation:n .18s steps(2) infinite}
+@keyframes n{25%{transform:translate(2%,-1%)}50%{transform:translate(-1%,2%)}75%{transform:translate(1%,1%)}100%{transform:translate(-2%,-1%)}}
+
+#particles{position:fixed;inset:0;z-index:8;pointer-events:none}
+.p{position:absolute;width:2px;height:2px;background:#f22;border-radius:50%;box-shadow:0 0 8px #f00;animation:up linear infinite}
+@keyframes up{from{transform:translateY(110vh) translateX(0)}to{transform:translateY(-10vh) translateX(var(--d))}}
+
+main{position:relative;z-index:10;width:100%;height:100%;display:grid;place-items:center}
+.portal{
+  position:absolute;width:520px;height:520px;border-radius:50%;
+  border:1px solid rgba(255,0,0,.16);
+  box-shadow:0 0 60px rgba(255,0,0,.12),inset 0 0 60px rgba(255,0,0,.08);
+  animation:spin 25s linear infinite,pop 4s ease-in-out infinite;
+}
+.portal:before,.portal:after{
+  content:"";position:absolute;inset:45px;border:1px dashed rgba(255,0,0,.32);border-radius:50%;
+}
+.portal:after{inset:100px;animation:spin 9s linear infinite reverse}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pop{50%{transform:scale(1.05);opacity:.7}}
+
+.terminal{width:min(650px,80vw);animation:float 5s ease-in-out infinite}
+@keyframes float{50%{transform:translateY(-5px)}}
+
+.shell{
+  height:82px;display:flex;align-items:center;
+  background:linear-gradient(90deg,rgba(5,5,5,.97),rgba(25,0,0,.92),rgba(5,5,5,.97));
+  border:1px solid rgba(255,0,0,.72);
+  box-shadow:0 0 12px rgba(255,0,0,.35),0 0 45px rgba(255,0,0,.13),inset 0 0 30px rgba(255,0,0,.07);
+  clip-path:polygon(0 12px,12px 0,calc(100% - 12px) 0,100% 12px,100% calc(100% - 12px),calc(100% - 12px) 100%,12px 100%,0 calc(100% - 12px));
+}
+input{
+  flex:1;height:100%;padding:0 26px;border:0;outline:0;background:transparent;
+  color:#fff;font:21px "Share Tech Mono",monospace;letter-spacing:3px;text-shadow:0 0 8px rgba(255,0,0,.6)
+}
+input::placeholder{color:rgba(255,255,255,.28);letter-spacing:4px}
+button{
+  width:82px;height:100%;border:0;border-left:1px solid rgba(255,0,0,.35);
+  background:rgba(255,0,0,.04);color:#f33;font:28px "Share Tech Mono",monospace;cursor:pointer;text-shadow:0 0 10px red
+}
+button:hover{background:rgba(255,0,0,.18);color:#fff}
+.glitch{animation:g .25s steps(2)}
+@keyframes g{20%{transform:translate(-5px,2px);filter:hue-rotate(40deg)}40%{transform:translate(5px,-2px);filter:contrast(2)}60%{transform:translate(-3px)}80%{transform:translate(3px)}}
+
+@media(max-width:700px){
+  .portal{width:350px;height:350px}
+  .shell{height:68px}
+  input{font-size:16px;padding:0 18px}
+  button{width:65px;font-size:22px}
+}
+</style>
+</head>
+
+<body>
+<div id="world"></div>
+<div id="particles"></div>
+<div class="noise"></div>
+<div class="scan"></div>
+
+<main>
+  <div class="portal"></div>
+
+  <section class="terminal">
+    <form id="ctfForm">
+      <div class="shell">
+        <input id="flagInput" autocomplete="off" spellcheck="false" placeholder="ENTER THE KEY...">
+        <button type="submit">→</button>
+      </div>
+    </form>
+  </section>
+</main>
+
+<script>
+/*
+  OXCODE DOOMSDAY
+  Client notes:
+  - Gate: /api/submit
+  - Operator channel: /api/ops/omega
+  - The operator channel is not intended for ordinary players.
+  - Token: omega
+
+  The comments are intentionally part of the challenge.
+*/
+
+const particles = document.getElementById("particles");
+
+for(let i=0;i<90;i++){
+  const p=document.createElement("div");
+  p.className="p";
+  p.style.left=Math.random()*100+"%";
+  p.style.setProperty("--d",(Math.random()*160-80)+"px");
+  p.style.animationDuration=(Math.random()*12+7)+"s";
+  p.style.animationDelay=-(Math.random()*15)+"s";
+  particles.appendChild(p);
+}
+
+const world=document.getElementById("world");
+document.addEventListener("mousemove",e=>{
+  const x=e.clientX/innerWidth-.5;
+  const y=e.clientY/innerHeight-.5;
+  world.style.transform=`scale(1.05) translate(${x*-12}px,${y*-8}px)`;
+});
+
+const form=document.getElementById("ctfForm");
+const input=document.getElementById("flagInput");
+const terminal=document.querySelector(".terminal");
+
+form.addEventListener("submit",async e=>{
+  e.preventDefault();
+
+  terminal.classList.remove("glitch");
+  void terminal.offsetWidth;
+  terminal.classList.add("glitch");
+
+  const key=input.value.trim();
+
+  if(!key)return;
+
+  const response=await fetch("/api/submit",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
+      key,
+      meta:{
+        client:"doomsday",
+        version:1
+      }
+    })
+  });
+
+  const data=await response.json();
+  console.log("[OXCODE]",data);
+});
+</script>
+</body>
+</html>
